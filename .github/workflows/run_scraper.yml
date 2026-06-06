@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Force Google DNS Resolver
-        # GitHub Azure networks ke slow network mapping ko resolve karne ke liye DNS injection
+        # Handshake bypass fast karne ke liye DNS injection
         run: |
           sudo echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
           sudo echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
 
       - name: Install System FFMPEG Core
-        # Linux host par stable network streams aur chunks handling ke liye core ffmpeg tool setup
+        # Linux runner par native stable tools configuration setup
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg curl git
@@ -36,17 +36,17 @@ jobs:
         run: |
           pip install --upgrade pip setuptools wheel
           pip install -r repo_code/requirements.txt
-          python -m playwright install chromium
-          sudo python -m playwright install-deps
+          # FIXED: Python module ko call karne ke liye direct env context ka use kiya bina sudo ke
+          playwright install chromium
+          # Playwright system dependencies install karne ka sahi tarika bina python environment break kiye
+          sudo npx playwright install-deps
 
       - name: Run Scraper Engine
-        # working-directory se ensure hoga ki database updates clone ke andar hi trigger hon
         working-directory: ./repo_code
         run: |
           python auto_scraper.py
 
       - name: Auto Save Tracking Progress
-        # Script fail ho ya complete, progress and unique database double post rokne ke liye sync hoga
         if: always()
         working-directory: ./repo_code
         env:
