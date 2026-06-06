@@ -9,25 +9,55 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Python
+      - name: Force Google DNS Resolver
+        # GitHub Azure networks ke slow network mapping ko resolve karne ke liye DNS injection
+        run: |
+          sudo echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
+          sudo echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
+
+      - name: Install System FFMPEG Core
+        # Linux host par stable network streams aur chunks handling ke liye core ffmpeg tool setup
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg curl git
+
+      - name: Setup Python Environment
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
       - name: Clone Code from Hugging Face
         env:
-          # GitHub Secrets mein HF_TOKEN naam se token save rakhein
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           git clone https://user:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 repo_code
           
       - name: Install Dependencies
         run: |
+          pip install --upgrade pip setuptools wheel
           pip install -r repo_code/requirements.txt
-          playwright install chromium
-          playwright install-deps
+          python -m playwright install chromium
+          sudo python -m playwright install-deps
 
-      - name: Run Scraper
+      - name: Run Scraper Engine
+        # working-directory se ensure hoga ki database updates clone ke andar hi trigger hon
+        working-directory: ./repo_code
         run: |
-          python repo_code/auto_scraper.py
+          python auto_scraper.py
+
+      - name: Auto Save Tracking Progress
+        # Script fail ho ya complete, progress and unique database double post rokne ke liye sync hoga
+        if: always()
+        working-directory: ./repo_code
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.name "GitHub Action Engine"
+          git config --global user.email "actions@github.com"
+          
+          if [ -f "posted_movies.txt" ] || [ -f "page_tracker.txt" ]; then
+            git add posted_movies.txt page_tracker.txt
+            git commit -m "🤖 Sync Engine: Updated posted_movies database [Skip CI]" || exit 0
+            git push https://user:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 main
+          fi
           
