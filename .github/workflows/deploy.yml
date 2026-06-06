@@ -1,0 +1,16 @@
+name: Trigger HF Space Restart
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  restart-space:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restart HF Space
+        run: |
+          curl -X POST https://huggingface.co/api/spaces/Sudarshan143/Scrapper2/restart \
+               -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}"
+               
