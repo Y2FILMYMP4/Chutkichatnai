@@ -9,6 +9,9 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository Base
+        uses: actions/checkout@v4
+
       - name: Force Google DNS Resolver
         run: |
           sudo echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
@@ -20,15 +23,16 @@ jobs:
           sudo apt-get install -y ffmpeg curl git
 
       - name: Setup Python Environment
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip' # Automated caching for faster runs
 
       - name: Clone Code Securely (Avoid 429)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Added --depth 1 to pull only the latest state (Super Light Weight)
+          # Clones only the latest commit to save bandwidth and avoid rate limits
           git clone --depth 1 https://Sudarshan143:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 repo_code
           
       - name: Install Dependencies
@@ -53,11 +57,23 @@ jobs:
           git config --global user.name "GitHub Action Engine"
           git config --global user.email "actions@github.com"
           
+          # Avoid identity conflicts on Hugging Face spaces
+          git config --global pull.rebase false
+          
+          # Fetch and pull latest changes from HF space before pushing
+          git remote set-url origin https://Sudarshan143:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2
           git pull origin main || true
           
+          # Check if tracking files exist and have modifications
           if [ -f "posted_movies.txt" ] || [ -f "page_tracker.txt" ]; then
             git add posted_movies.txt page_tracker.txt
-            git commit -m "🤖 Sync Engine: Updated database progress [Skip CI]" || exit 0
-            git push https://Sudarshan143:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 main
+            
+            # Commit only if there are changes to prevent empty commit errors
+            if ! git diff-index --quiet HEAD --; then
+              git commit -m "🤖 Sync Engine: Updated database progress [Skip CI]"
+              git push origin main
+            else
+              echo "No tracking progress changes detected. Skipping push."
+            fi
           fi
           
