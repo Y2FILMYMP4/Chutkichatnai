@@ -1,9 +1,9 @@
 name: Run Scraper
 
 on:
-  workflow_dispatch: # Manual run karne ke liye button mil jayega
+  workflow_dispatch:
   schedule:
-    - cron: '0 * * * *' # Har ghante automatic background me chalega
+    - cron: '0 * * * *'
 
 jobs:
   run-bot:
@@ -24,11 +24,12 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Clone Code from Hugging Face
+      - name: Clone Code Securely (Avoid 429)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git clone https://user:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 repo_code
+          # Added --depth 1 to pull only the latest state (Super Light Weight)
+          git clone --depth 1 https://Sudarshan143:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 repo_code
           
       - name: Install Dependencies
         run: |
@@ -38,14 +39,13 @@ jobs:
           python -m playwright install-deps
 
       - name: Run Scraper Engine
-        timeout-minutes: 20 # Agar koi file bhot badi ho toh max 20 mins tak wait karega
+        timeout-minutes: 20
         working-directory: ./repo_code
         run: |
-          # FIXED: Aapki asli file auto_scraper.py ko hi call karega ab!
           python auto_scraper.py
 
       - name: Auto Save Tracking Progress
-        if: always() # Script success ho ya fail, tracker hamesha save hona chahiye
+        if: always()
         working-directory: ./repo_code
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -53,12 +53,11 @@ jobs:
           git config --global user.name "GitHub Action Engine"
           git config --global user.email "actions@github.com"
           
-          # Push karne se pehle agar HF par koi naya badlav hua ho toh automatic merge kar lega
           git pull origin main || true
           
           if [ -f "posted_movies.txt" ] || [ -f "page_tracker.txt" ]; then
             git add posted_movies.txt page_tracker.txt
             git commit -m "🤖 Sync Engine: Updated database progress [Skip CI]" || exit 0
-            git push https://user:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 main
+            git push https://Sudarshan143:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 main
           fi
           
