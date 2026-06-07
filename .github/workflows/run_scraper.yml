@@ -1,4 +1,4 @@
-Name: Run Scraper
+name: Run Scraper
 
 on:
   workflow_dispatch:
@@ -28,26 +28,23 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Added --depth 1 to pull only the latest state (Super Light Weight)
           git clone --depth 1 https://Sudarshan143:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 repo_code
           
       - name: Install Dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-          # Forcing pyrogram and tgcrypto to ensure 2GB/20MB limit bypass works flawlessly
           pip install pyrogram tgcrypto
           pip install -r repo_code/requirements.txt
           python -m playwright install chromium
           python -m playwright install-deps
 
       - name: Run Scraper Engine
-        # Timeout badha kar 50 mins kiya kyunki ab badi movies split aur upload hongi
         timeout-minutes: 50
         working-directory: ./repo_code
         run: |
           python auto_scraper.py
 
-      - name: Auto Save Tracking Progress
+      - name: Auto Save Tracking Progress & Session
         if: always()
         working-directory: ./repo_code
         env:
@@ -58,9 +55,13 @@ jobs:
           
           git pull origin main || true
           
-          if [ -f "posted_movies.txt" ] || [ -f "page_tracker.txt" ]; then
-            git add posted_movies.txt page_tracker.txt
-            git commit -m "🤖 Sync Engine: Updated database progress [Skip CI]" || exit 0
+          # Yahan database ke saath-saath telegram ki session file bhi auto-save hogi
+          git add posted_movies.txt page_tracker.txt *.session 2>/dev/null || true
+          
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "🤖 Sync Engine: Updated database and session [Skip CI]"
             git push https://Sudarshan143:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 main
           fi
           
