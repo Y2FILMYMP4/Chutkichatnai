@@ -1,22 +1,20 @@
 name: Run Scraper
 
 on:
-  workflow_dispatch: # Manual run ke liye
+  workflow_dispatch: # Manual run karne ke liye button mil jayega
   schedule:
-    - cron: '0 * * * *' # Har ghante automatic run hoga
+    - cron: '0 * * * *' # Har ghante automatic background me chalega
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
       - name: Force Google DNS Resolver
-        # Handshake bypass fast karne ke liye DNS injection
         run: |
           sudo echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
           sudo echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
 
       - name: Install System FFMPEG Core
-        # Linux runner par native stable tools configuration setup
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg curl git
@@ -36,18 +34,18 @@ jobs:
         run: |
           pip install --upgrade pip setuptools wheel
           pip install -r repo_code/requirements.txt
-          # Fixed: Python module direct invoke taaki system binaries crash na karein
           python -m playwright install chromium
           python -m playwright install-deps
 
       - name: Run Scraper Engine
+        timeout-minutes: 20 # Agar koi file bhot badi ho toh max 20 mins tak wait karega
         working-directory: ./repo_code
         run: |
-          # FIXED: Aapki file ka naam exact 'auto_scraper.py' track kar diya hai
+          # FIXED: Aapki asli file auto_scraper.py ko hi call karega ab!
           python auto_scraper.py
 
       - name: Auto Save Tracking Progress
-        if: always()
+        if: always() # Script success ho ya fail, tracker hamesha save hona chahiye
         working-directory: ./repo_code
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -55,9 +53,12 @@ jobs:
           git config --global user.name "GitHub Action Engine"
           git config --global user.email "actions@github.com"
           
+          # Push karne se pehle agar HF par koi naya badlav hua ho toh automatic merge kar lega
+          git pull origin main || true
+          
           if [ -f "posted_movies.txt" ] || [ -f "page_tracker.txt" ]; then
             git add posted_movies.txt page_tracker.txt
-            git commit -m "🤖 Sync Engine: Updated posted_movies database [Skip CI]" || exit 0
+            git commit -m "🤖 Sync Engine: Updated database progress [Skip CI]" || exit 0
             git push https://user:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 main
           fi
           
