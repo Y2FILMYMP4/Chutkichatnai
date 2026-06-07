@@ -1,4 +1,4 @@
-Name: Run Scraper
+name: Run Scraper
 
 on:
   workflow_dispatch:
@@ -9,7 +9,8 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository Base
+      # Step 1: Base repository checkout karna zaroori hai taki Git environment initialised rahe
+      - name: Checkout Base Repository
         uses: actions/checkout@v4
 
       - name: Force Google DNS Resolver
@@ -26,14 +27,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip' # Automated caching for faster runs
 
+      # Step 2: Hugging Face space ko alag directory me fresh clone karna
       - name: Clone Code Securely (Avoid 429)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Clones only the latest commit to save bandwidth and avoid rate limits
-          git clone --depth 1 https://Sudarshan143:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2 repo_code
+          git clone --depth 1 https://Sudarshan143:${HF_TOKEN}@huggingface.co/spaces/Sudarshan143/Scrapper2 repo_code
           
       - name: Install Dependencies
         run: |
@@ -48,6 +48,7 @@ jobs:
         run: |
           python auto_scraper.py
 
+      # Step 3: Git push standard workflow jo authentication errors nahi dega
       - name: Auto Save Tracking Progress
         if: always()
         working-directory: ./repo_code
@@ -57,23 +58,23 @@ jobs:
           git config --global user.name "GitHub Action Engine"
           git config --global user.email "actions@github.com"
           
-          # Avoid identity conflicts on Hugging Face spaces
+          # Git conflicts ko rokne ke liye config
           git config --global pull.rebase false
           
-          # Fetch and pull latest changes from HF space before pushing
-          git remote set-url origin https://Sudarshan143:$HF_TOKEN@huggingface.co/spaces/Sudarshan143/Scrapper2
+          # Remote URL ko sahi tarike se set karna credentials ke sath
+          git remote set-url origin https://Sudarshan143:${HF_TOKEN}@huggingface.co/spaces/Sudarshan143/Scrapper2
           git pull origin main || true
           
-          # Check if tracking files exist and have modifications
+          # Agar tracking files banti hain to commit karke push karna
           if [ -f "posted_movies.txt" ] || [ -f "page_tracker.txt" ]; then
-            git add posted_movies.txt page_tracker.txt
+            git add posted_movies.txt page_tracker.txt 2>/dev/null || true
             
-            # Commit only if there are changes to prevent empty commit errors
+            # Khali commit se bachne ke liye check
             if ! git diff-index --quiet HEAD --; then
               git commit -m "🤖 Sync Engine: Updated database progress [Skip CI]"
               git push origin main
             else
-              echo "No tracking progress changes detected. Skipping push."
+              echo "Koi naya data update nahi hua. Push ki zaroorat nahi hai."
             fi
           fi
           
