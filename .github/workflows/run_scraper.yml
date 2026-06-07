@@ -1,4 +1,4 @@
-name: Run Scraper
+Name: Run Scraper
 
 on:
   workflow_dispatch:
@@ -34,12 +34,15 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install --upgrade pip setuptools wheel
+          # Forcing pyrogram and tgcrypto to ensure 2GB/20MB limit bypass works flawlessly
+          pip install pyrogram tgcrypto
           pip install -r repo_code/requirements.txt
           python -m playwright install chromium
           python -m playwright install-deps
 
       - name: Run Scraper Engine
-        timeout-minutes: 20
+        # Timeout badha kar 50 mins kiya kyunki ab badi movies split aur upload hongi
+        timeout-minutes: 50
         working-directory: ./repo_code
         run: |
           python auto_scraper.py
