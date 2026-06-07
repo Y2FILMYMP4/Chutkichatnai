@@ -3,7 +3,7 @@ name: Run Scraper
 on:
   workflow_dispatch: # Manual run ke liye
   schedule:
-    - cron: '0 * * * *' # Har ghante run hoga
+    - cron: '0 * * * *' # Har ghante automatic run hoga
 
 jobs:
   run-bot:
@@ -36,14 +36,14 @@ jobs:
         run: |
           pip install --upgrade pip setuptools wheel
           pip install -r repo_code/requirements.txt
-          # FIXED: Python module ko call karne ke liye direct env context ka use kiya bina sudo ke
-          playwright install chromium
-          # Playwright system dependencies install karne ka sahi tarika bina python environment break kiye
-          sudo npx playwright install-deps
+          # Fixed: Python module direct invoke taaki system binaries crash na karein
+          python -m playwright install chromium
+          python -m playwright install-deps
 
       - name: Run Scraper Engine
         working-directory: ./repo_code
         run: |
+          # FIXED: Aapki file ka naam exact 'auto_scraper.py' track kar diya hai
           python auto_scraper.py
 
       - name: Auto Save Tracking Progress
